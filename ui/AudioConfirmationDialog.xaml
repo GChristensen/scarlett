@@ -1,0 +1,22 @@
+﻿<Window x:Class="Scarlett.ui.AudioConfirmationDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:local="clr-namespace:Scarlett.ui"
+        Title="Confirmation" Height="150" Width="668" WindowStartupLocation="CenterScreen">
+    <Grid Margin="0,-40,0,0">
+        <Grid.RowDefinitions>
+            <RowDefinition />
+            <RowDefinition Height="Auto" MinHeight="42" />
+        </Grid.RowDefinitions>
+
+        <StackPanel Orientation="Horizontal" Margin="10,22,10,40" Grid.RowSpan="2">
+            <Image Source="/icons/Exclamation.png" Width="42" Height="42" Margin="15"/>
+            <TextBlock Name="AlertText" VerticalAlignment="Center" Text="" FontSize="16" Width="575"/>
+        </StackPanel>
+
+        <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Grid.Row="1" Margin="0,10,0,10" Width="170">
+            <Button Content="Yes" Width="75" Margin="5" Click="YesButton_Click"/>
+            <Button Content="No" Width="75" Margin="5" Click="NoButton_Click" IsCancel="True" IsDefault="True"/>
+        </StackPanel>
+    </Grid>
+</Window>
