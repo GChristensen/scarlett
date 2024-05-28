@@ -58,10 +58,12 @@ two actions: "open browser" and "open slideshow".
 
 ```
 
-For more details please see the [sample config]() which should be self-explanatory.
+For more details please see the [sample config](https://github.com/GChristensen/scarlett/blob/main/settings.json) 
+which should be self-explanatory.
 
 ### Creating Your Own Actions
 
 You can create the logic of your own actions either in a scripting language you can execute
-with the "run" action, or by copying the [action template]() inside `Scarlett.actions.user` 
+with the "run" action, or by copying the [action template](https://github.com/GChristensen/scarlett/blob/main/actions/user/TemplateAction.cs)
+inside `Scarlett.actions.user` 
 namespace and rebuilding the application.
