@@ -50,7 +50,10 @@ public partial class AudioConfirmationDialog : Window
     private void OnClosed(object? sender, EventArgs e)
     {
         if (_engine?.AudioState != AudioState.Stopped)
-            _engine?.RecognizeAsyncStop();
+        {
+            _engine?.RecognizeAsyncCancel();
+            _engine?.Dispose();
+        }
     }
 
     private void YesButton_Click(object sender, RoutedEventArgs e)
