@@ -36,10 +36,12 @@ public partial class App : System.Windows.Application
             
         Startup += OnAppStartup;
         SystemEvents.SessionSwitch += SystemEvents_SessionSwitch;
-        DispatcherUnhandledException += OnUnhandledException;
+        //DispatcherUnhandledException += OnUnhandledException;
+        AppDomain currentDomain = AppDomain.CurrentDomain;
+        currentDomain.UnhandledException += OnUnhandledException;
         //SystemEvents.PowerModeChanged += SystemEvents_OnPowerChange;
     }
-
+    
     private void OnAppStartup(object sender, StartupEventArgs e)
     {
         Log.Init();
@@ -86,17 +88,28 @@ public partial class App : System.Windows.Application
 
     private void CreateRecognizer(Settings settings)
     {
-        _recognizer = new Recognizer(settings);
-        _recognizer.StateChanged += State_Changed;
-        _recognizer.Resume();
-        
-        StartMonitoringThread();
+        Log.Print("Creating recognizer...");
+
+        if (_recognizer == null)
+        {
+            _recognizer = new Recognizer(settings);
+            _recognizer.StateChanged += State_Changed;
+            _recognizer.Resume();
+            
+            StartMonitoringThread();
+        }
     }
 
-    private void OnUnhandledException(object sender, DispatcherUnhandledExceptionEventArgs e)
+    // private void OnUnhandledException(object sender, DispatcherUnhandledExceptionEventArgs e)
+    // {
+    //     Log.Error(e.Exception);
+    // }
+    
+    private void OnUnhandledException(object sender, UnhandledExceptionEventArgs e)
     {
-        Log.Error(e.Exception);
+        Log.Error(e.ExceptionObject);
     }
+
     
     public void StartMonitoringThread()
     {
@@ -111,7 +124,6 @@ public partial class App : System.Windows.Application
         {
             Thread.Sleep(WATCH_THREAD_SLEEP_MIN * 60 * 1000);
             _wakeCounter++;
-            
             
             bool listeningStateAnomaly = _recognizer is { IsPaused: false, IsListening: false };
             
@@ -199,7 +211,7 @@ public partial class App : System.Windows.Application
 
     private void SystemEvents_SessionSwitch(object sender, SessionSwitchEventArgs e)
     {
-        Log.Print(e.Reason);
+        Log.Print("Session swtch reason: " + e.Reason);
         
         lock (this)
         {

@@ -1,4 +1,5 @@
-﻿using System.Speech.Recognition;
+﻿using System.Runtime.CompilerServices;
+using System.Speech.Recognition;
 using Scarlett.actions;
 
 namespace Scarlett;
@@ -8,11 +9,11 @@ public class Recognizer
     private Settings _settings;
     private ActionManager _actionManager;
     private SpeechRecognitionEngine? _engine;
-    private bool _confirmation = false;
+    private bool _recognitionCompleted = true;
     public event EventHandler? StateChanged;
-
+    
     public bool IsPaused => _engine == null;
-    public bool IsListening => _confirmation || _engine?.AudioState != AudioState.Stopped;
+    public bool IsListening => _engine?.AudioState != AudioState.Stopped;
     
     public Recognizer(Settings settings)
     {
@@ -23,22 +24,26 @@ public class Recognizer
         _actionManager.ConfirmationEnd += OnConfirmationEnd;
     }
     
+    [MethodImpl(MethodImplOptions.Synchronized)]
     public void Pause()
     {
         if (!IsPaused)
         {
-            _engine?.RecognizeAsyncStop();
+            _engine?.RecognizeAsyncCancel();
+            Log.Print("Cancelled recognition...");
+            _engine?.Dispose();
             _engine = null;
             
             StateChanged?.Invoke(this, EventArgs.Empty);
         }
     }
     
+    [MethodImpl(MethodImplOptions.Synchronized)]
     public void Resume()
     {
         if (!IsPaused) return;
         
-        Thread.Sleep(1500);
+        //Thread.Sleep(1500);
         
         _engine = new SpeechRecognitionEngine();
         
@@ -68,7 +73,7 @@ public class Recognizer
         }
         
         _engine.SpeechRecognized += OnSpeechRecognized;
-        //_engine.RecognizeCompleted += RecognizeCompleted;
+        _engine.RecognizeCompleted += OnRecognizeCompleted;
         
         try
         {
@@ -84,27 +89,32 @@ public class Recognizer
         }
     }
 
+    [MethodImpl(MethodImplOptions.Synchronized)]
     public void Restart()
     {
         Pause();
-        Utils.DoEvents();
         Resume();
     }
     
     private void OnConfirmationBegin(object? sender, EventArgs e)
     {
-        _confirmation = true;
-        _engine?.RecognizeAsyncStop();
+        Log.Print("Pausing general recognition during confirmation...");
+        //_confirmation = true;
+        // _engine?.RecognizeAsyncStop();
+        Pause();
     }
     
     private void OnConfirmationEnd(object? sender, EventArgs e)
     {
-        _confirmation = false;   
-        _engine?.RecognizeAsync();
+        //_confirmation = false;
+        Resume();
+        // _engine?.RecognizeAsync();
+         Log.Print("Resuming general recognition...");
     }
     
     private void OnRecognizeCompleted(object? sender, RecognizeCompletedEventArgs e)
     {
+        Log.Print("Recognition completed.");
         Log.Print(e);
 
         // if (!_paused)

@@ -1,4 +1,6 @@
-﻿namespace Scarlett;
+﻿using System.Windows.Threading;
+
+namespace Scarlett;
 
 using System.Reflection;
 using Scarlett.actions;
@@ -6,6 +8,8 @@ using Scarlett.actions;
 public class ActionManager
 {
     private readonly Settings _settings;
+    private readonly Dispatcher? _dispatcher;
+    
     private readonly Dictionary<string, IAction?> _registeredActions = new();
     private readonly Dictionary<string, ActionNoun> _phraseToAction = new();
     
@@ -17,6 +21,7 @@ public class ActionManager
     public ActionManager(Settings settings)
     {
         _settings = settings;
+        _dispatcher = Dispatcher.CurrentDispatcher;
         
         RegisterActions("Scarlett.actions");
         RegisterActions("Scarlett.actions.user");
@@ -107,7 +112,7 @@ public class ActionManager
         {
             try
             {
-                ConfirmationBegin?.Invoke(this, EventArgs.Empty);
+                _dispatcher?.Invoke(() => ConfirmationBegin?.Invoke(this, EventArgs.Empty));
                 
                 return Confirmation.Confirm(phrase);
             }
@@ -118,7 +123,7 @@ public class ActionManager
             }
             finally
             {
-                ConfirmationEnd?.Invoke(this, EventArgs.Empty);
+                _dispatcher?.Invoke(() => ConfirmationEnd?.Invoke(this, EventArgs.Empty));
             }
         }
 

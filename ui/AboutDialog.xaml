@@ -8,7 +8,7 @@
         Title="About Scarlett" Height="280" Width="290" WindowStartupLocation="CenterScreen">
     <Grid Margin="0,0,0,0">
         <TextBlock HorizontalAlignment="Center" Margin="0,88,0,0" TextWrapping="Wrap" Text="Scarlett" VerticalAlignment="Top" FontSize="42" FontWeight="Bold"/>
-        <TextBlock HorizontalAlignment="Center" TextWrapping="Wrap" Text="Version 0.0.1a" VerticalAlignment="Top" FontSize="20" Margin="0,149,0,0"/>
+        <TextBlock HorizontalAlignment="Center" TextWrapping="Wrap" Text="Version 0.0.1b" VerticalAlignment="Top" FontSize="20" Margin="0,149,0,0"/>
         <Image Source="/icons/Logo.png" HorizontalAlignment="Center" Height="64" Margin="0,20,0,0" VerticalAlignment="Top" Width="64"/>
         <Button Content="OK" Click="OKButton_Click" HorizontalAlignment="Center" Margin="0,192,0,0" VerticalAlignment="Top" Width="64" Height="31" IsCancel="True"/>
 

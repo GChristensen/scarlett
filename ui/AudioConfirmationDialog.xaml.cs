@@ -19,7 +19,7 @@ public partial class AudioConfirmationDialog : Window
 
         AlertText.Text = "Please say 'Yes' or 'No' to confirm or reject the action '" + actionPhrase + "'?";
 
-        _dispatcher = System.Windows.Threading.Dispatcher.CurrentDispatcher;
+        _dispatcher = Dispatcher.CurrentDispatcher;
         _engine = new SpeechRecognitionEngine();
         
         GrammarBuilder grammarBuilder = new GrammarBuilder();
@@ -35,7 +35,7 @@ public partial class AudioConfirmationDialog : Window
         Closed += OnClosed;
         
         _engine.SetInputToDefaultAudioDevice();
-        _engine.RecognizeAsync(RecognizeMode.Multiple);
+        _engine.RecognizeAsync(RecognizeMode.Single);
         
         StartCloseTimer();
     }
@@ -49,13 +49,14 @@ public partial class AudioConfirmationDialog : Window
 
     private void OnClosed(object? sender, EventArgs e)
     {
-        _engine?.RecognizeAsyncStop();
+        if (_engine?.AudioState != AudioState.Stopped)
+            _engine?.RecognizeAsyncStop();
     }
 
     private void YesButton_Click(object sender, RoutedEventArgs e)
     {
         UserResponse = true;
-        this.Close();
+        Close();
     }
 
     private void NoButton_Click(object sender, RoutedEventArgs e)

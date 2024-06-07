@@ -9,16 +9,24 @@ public class Confirmation
         bool confirmed = false;
         var thread = new Thread(() =>
         {
-            var confirmationDialog = new AudioConfirmationDialog(actionPhrase);
-            confirmationDialog.Show();
-
-            confirmationDialog.Closed += (object? sender, EventArgs e) =>
+            try
             {
-                confirmed = confirmationDialog.UserResponse;
-                System.Windows.Threading.Dispatcher.ExitAllFrames();
-            };
+                var confirmationDialog = new AudioConfirmationDialog(actionPhrase);
 
-            System.Windows.Threading.Dispatcher.Run();
+                confirmationDialog.Show();
+
+                confirmationDialog.Closed += (object? sender, EventArgs e) =>
+                {
+                    confirmed = confirmationDialog.UserResponse;
+                    System.Windows.Threading.Dispatcher.ExitAllFrames();
+                };
+
+                System.Windows.Threading.Dispatcher.Run();
+            }
+            catch (Exception e)
+            {
+                Log.Print(e);
+            }
         });
         thread.SetApartmentState(ApartmentState.STA);
         thread.Start();
