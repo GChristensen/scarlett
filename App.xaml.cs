@@ -22,7 +22,7 @@ public partial class App : System.Windows.Application
     
     private NotifyIcon? _trayIcon;
     private ToolStripMenuItem? _playPauseMenuItem;
-    private Recognizer? _recognizer;
+    private RecognizerEngine? _recognizer;
 
     private EventHandler<EventArgs>? _periodicResumeEvent;
     
@@ -77,29 +77,31 @@ public partial class App : System.Windows.Application
 
         var aboutMenuItem = new ToolStripMenuItem("About", null, About_Click, "PlayPause");
         _playPauseMenuItem = new ToolStripMenuItem("Pause", null, PlayPause_Click, "PlayPause");
+        var restartMenuItem = new ToolStripMenuItem("Restart", null, Restart_Click, "Restart");
 
         cms.Items.Add(aboutMenuItem);
         cms.Items.Add(_playPauseMenuItem);
+        cms.Items.Add(restartMenuItem);
         cms.Items.Add(new ToolStripSeparator());
         cms.Items.Add(new ToolStripMenuItem("Exit", null, Exit_Click, "Exit"));
         
         _trayIcon.ContextMenuStrip = cms;
     }
 
-    private void CreateRecognizer(Settings settings)
+    private async void CreateRecognizer(Settings settings)
     {
         Log.Print("Creating recognizer...");
 
         if (_recognizer == null)
         {
-            _recognizer = new Recognizer(settings);
-            _recognizer.StateChanged += State_Changed;
-            _recognizer.Resume();
-            
-            StartMonitoringThread();
+            _recognizer = RecognizerFactory.CreateRecognizer(settings, App.Current.Dispatcher);
+            //_recognizer.StateChanged += State_Changed;
+            _recognizer.RecognitionPaused += Recognition_Paused;
+
+            //StartMonitoringThread();
         }
     }
-
+    
     // private void OnUnhandledException(object sender, DispatcherUnhandledExceptionEventArgs e)
     // {
     //     Log.Error(e.Exception);
@@ -109,7 +111,6 @@ public partial class App : System.Windows.Application
     {
         Log.Error(e.ExceptionObject);
     }
-
     
     public void StartMonitoringThread()
     {
@@ -124,9 +125,9 @@ public partial class App : System.Windows.Application
         {
             Thread.Sleep(WATCH_THREAD_SLEEP_MIN * 60 * 1000);
             _wakeCounter++;
-            
-            bool listeningStateAnomaly = _recognizer is { IsPaused: false, IsListening: false };
-            
+
+            bool listeningStateAnomaly = false;
+
             if (listeningStateAnomaly || _wakeCounter % RECOGNIZER_PERIOD_MIN == 0)
             {
                 if (listeningStateAnomaly)
@@ -150,9 +151,9 @@ public partial class App : System.Windows.Application
         }
     }
 
-    private void OnPeriodicRestart(object? sender, EventArgs e)
+    private async void OnPeriodicRestart(object? sender, EventArgs e)
     {
-        _recognizer?.Restart();
+        await _recognizer?.RestartAsync();
     }
     
     private void About_Click(object? sender, EventArgs e)
@@ -172,34 +173,89 @@ public partial class App : System.Windows.Application
         thread.SetApartmentState(ApartmentState.STA);
         thread.Start();
     }
-    
-    private void PlayPause_Click(object? sender, EventArgs e)
+
+    private async void PlayPause_Click(object? sender, EventArgs e)
     {
-        if (_recognizer?.IsPaused ?? true)
+        if (_recognizer != null)
         {
-            _recognizer?.Resume();
+            if (_recognizer.IsPaused)
+            {
+                Log.Print("Resuming recognition...");
+                _recognizer.IsPaused = false;
+
+            }
+            else
+            {
+                Log.Print("Pausing recognition...");
+                _recognizer.IsPaused = true;
+            }
         }
-        else
+    }
+    
+    private void Restart_Click(object? sender, EventArgs e)
+    {
+        Log.Print("Restarting application...");
+        
+        try
         {
-            _recognizer?.Pause();
+            // Get the current executable path
+            string executablePath = Process.GetCurrentProcess().MainModule?.FileName ?? "";
+            
+            if (string.IsNullOrEmpty(executablePath))
+            {
+                Log.Error("Could not determine executable path for restart");
+                return;
+            }
+            
+            // Create new process
+            ProcessStartInfo startInfo = new ProcessStartInfo
+            {
+                FileName = executablePath,
+                UseShellExecute = true
+            };
+            
+            // Start the new instance
+            Process.Start(startInfo);
+            
+            // Dispose current tray icon and clean up
+            if (_trayIcon != null)
+                _trayIcon.Visible = false;
+            
+            // Exit current instance
+            Environment.Exit(0);
+        }
+        catch (Exception ex)
+        {
+            Log.Error("Failed to restart application: " + ex.Message);
+            MessageBox.Show("Failed to restart application. Please see the log for details.",
+                "Restart Error", MessageBoxButton.OK, MessageBoxImage.Error);
         }
     }
     
     private void State_Changed(object? sender, EventArgs e)
     {
+    }
+    
+    private void Recognition_Paused(object? sender, EventArgs e)
+    {
         if (_recognizer?.IsPaused ?? true)
         {
             if (_playPauseMenuItem != null)
                 _playPauseMenuItem.Text = "Resume";
+            
+            Utils.ShowNotification("Voice Recognition", "Recognition paused. Say 'resume listening' to continue.");
         }
         else
         {
             if (_playPauseMenuItem != null)
                 _playPauseMenuItem.Text = "Pause";
+            
+            Utils.ShowNotification("Voice Recognition", "Recognition resumed. Listening for commands.");
         }
         
         Log.Print("State changed to: " + (_recognizer?.IsPaused ?? true? "paused.": "resumed."));
     }
+
     
     private void Exit_Click(object? sender, EventArgs e)
     {
@@ -218,15 +274,24 @@ public partial class App : System.Windows.Application
             if (e.Reason == SessionSwitchReason.SessionLock || e.Reason == SessionSwitchReason.RemoteConnect)
             {
                 Log.Print("Pausing due to session lock.");
-                _recognizer?.Pause();
+                _recognizer?.StopAsync();
             }
             else if
                 (e.Reason == SessionSwitchReason.SessionUnlock /*|| e.Reason == SessionSwitchReason.RemoteDisconnect*/)
             {
                 Log.Print("Resuming due to session ulock.");
-                _recognizer?.Resume();
+                _recognizer?.ResumeAsync();
             }
         }
+    }
+    
+    protected override async void OnExit(ExitEventArgs e)
+    {
+        if (_recognizer != null)
+        {
+            await _recognizer.DisposeAsync();
+        }
+        base.OnExit(e);
     }
     
     // private void SystemEvents_OnPowerChange(object s, PowerModeChangedEventArgs e) 

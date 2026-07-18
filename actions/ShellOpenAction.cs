@@ -16,8 +16,8 @@ file class Args
         args.TryGetValue("menu_delay", out object? menuDelayObj);
         
         File = fileObj as string;
-        Menu = (int?)(long?)menuObj;
-        MenuDelay = (int?)(long?)menuDelayObj;
+        Menu = ArgHelper.ToInt(menuObj);
+        MenuDelay = ArgHelper.ToInt(menuDelayObj);
     }
 }
 

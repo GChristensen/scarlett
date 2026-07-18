@@ -1,37 +1,86 @@
-﻿using System.IO;
-using Newtonsoft.Json.Linq;
-using Newtonsoft.Json;
+﻿using System.Diagnostics;
+using System.IO;
+using YamlDotNet.Serialization;
 
 namespace Scarlett;
 
-internal static class JsonHelper
+internal static class YamlHelper
 {
-    public static object? Deserialize(string json)
+    public static object? Deserialize(string yaml)
     {
-        return ToObject(JToken.Parse(json));
+        // Use a typed deserializer to get proper type handling
+        var deserializer = new DeserializerBuilder()
+            .Build();
+
+        var yamlObject = deserializer.Deserialize<Dictionary<string, object>>(yaml);
+        return ConvertToNestedDictionaries(yamlObject);
     }
 
-    private static object? ToObject(JToken token)
+    private static object? ConvertToNestedDictionaries(object? obj)
     {
-        switch (token.Type)
+        if (obj == null)
+            return null;
+
+        // Handle dictionaries - convert Dictionary<object, object> to Dictionary<string, object>
+        if (obj is Dictionary<object, object> dictObjObj)
         {
-            case JTokenType.Object:
-                return token.Children<JProperty>()
-                    .ToDictionary(prop => prop.Name,
-                        prop => ToObject(prop.Value));
-
-            case JTokenType.Array:
-                return token.Select(ToObject).ToList();
-
-            default:
-                return ((JValue)token).Value;
+            var result = new Dictionary<string, object>();
+            foreach (var kvp in dictObjObj)
+            {
+                var key = kvp.Key?.ToString() ?? string.Empty;
+                result[key] = ConvertToNestedDictionaries(kvp.Value) ?? new object();
+            }
+            return result;
         }
+
+        // Handle already-typed string dictionaries
+        if (obj is Dictionary<string, object> dictStrObj)
+        {
+            var result = new Dictionary<string, object>();
+            foreach (var kvp in dictStrObj)
+            {
+                result[kvp.Key] = ConvertToNestedDictionaries(kvp.Value) ?? new object();
+            }
+            return result;
+        }
+
+        // If it's a List, recursively convert its items
+        if (obj is List<object> list)
+        {
+            return list.Select(ConvertToNestedDictionaries).ToList();
+        }
+
+        // Handle string conversions to proper types
+        if (obj is string str)
+        {
+            // Try to parse as boolean
+            if (bool.TryParse(str, out bool boolValue))
+                return boolValue;
+
+            // Try to parse as integer
+            if (int.TryParse(str, out int intValue))
+                return intValue;
+
+            // Try to parse as long
+            if (long.TryParse(str, out long longValue))
+                return longValue;
+
+            // Try to parse as double
+            if (double.TryParse(str, out double doubleValue))
+                return doubleValue;
+
+            // Return as string if no conversion worked
+            return str;
+        }
+
+        // For primitive types (including booleans, ints, doubles), return as-is
+        return obj;
     }
 }
 
 public class Settings
 {
-    private const string JSON_FILE_PATH = "settings.json";
+    private const string YAML_FILE_PATH = "settings.yaml";
 
     private Dictionary<string, object>? _settings = new();
     private Dictionary<string, object>? _assistant = new();
@@ -40,10 +89,12 @@ public class Settings
     private List<string> _verbs = new();
     private Restrictions? _restrict;
 
-    public bool DisplayErrors => (bool?)GetValue(_settings, "display_errors") ?? false;
+    public bool DisplayErrors => GetBoolValue(_settings, "display_errors", false);
     public string? AssistantName => (string?)GetValue(_assistant, "name");
-    public bool EnableAssistantName => (bool?)GetValue(_assistant, "enable_name") ?? false;
-    public double? MinConfidence => (double?)GetValue(_assistant, "min_confidence");
+    public bool EnableAssistantName => GetBoolValue(_assistant, "enable_name", false);
+    public double? MinConfidence => GetDoubleValue(_assistant, "min_confidence");
+    public string Engine => (string?)GetValue(_assistant, "engine") ?? "WSR";
+    public string VoskModelPath => (string?)GetValue(_assistant, "vosk_model_path") ?? "models/vosk-model-en";
 
     public List<string> Verbs => _verbs;
     public Dictionary<string, Dictionary<string, ActionNoun>> NounsOf => _actions;
@@ -63,66 +114,89 @@ public class Settings
         }
         catch (Exception ex)
         {
-            Log.Print($"Error reading JSON file: {ex.Message}");
+            Log.Print($"Error reading YAML file: {ex.Message}");
             return null;
         }
     }
 
-    void SaveTextFile(string filePath, string jsonData)
+    void SaveTextFile(string filePath, string yamlData)
     {
         try
         {
-            File.WriteAllText(filePath, jsonData);
+            File.WriteAllText(filePath, yamlData);
         }
         catch (Exception ex)
         {
-            Log.Print($"Error saving JSON file: {ex.Message}");
+            Log.Print($"Error saving YAML file: {ex.Message}");
         }
     }
 
     public void Load()
     {
-        string? jsonData = ReadTextFile(JSON_FILE_PATH);
+        Log.Print($"[Settings] Loading settings from: {YAML_FILE_PATH}");
+        string? yamlData = ReadTextFile(YAML_FILE_PATH);
 
-        if (jsonData != null)
+        if (yamlData != null)
         {
             try
             {
-                _settings = JsonHelper.Deserialize(jsonData) as Dictionary<string, object>;
-                
+                Log.Print("[Settings] Deserializing YAML...");
+                _settings = YamlHelper.Deserialize(yamlData) as Dictionary<string, object>;
+
                 if (_settings != null)
                 {
+                    Log.Print($"[Settings] Settings loaded. Keys: {string.Join(", ", _settings.Keys)}");
+
                     _assistant = GetValue(_settings, "assistant") as Dictionary<string, object> ?? new();
+                    Log.Print($"[Settings] Assistant settings loaded: {_assistant.Count} properties");
+
+                    // Debug: Log the types of assistant properties
+                    foreach (var kvp in _assistant)
+                    {
+                        Log.Print($"[Settings] Assistant['{kvp.Key}'] = {kvp.Value} (Type: {kvp.Value?.GetType().Name ?? "null"})");
+                    }
+
                     _vars = GetValue(_settings, "vars") as Dictionary<string, object> ?? new();
-                    
-                    var actions = GetValue(_settings, "actions") as Dictionary<string, object> 
+                    Log.Print($"[Settings] Vars loaded: {_vars.Count} variables");
+
+                    var actions = GetValue(_settings, "actions") as Dictionary<string, object>
                                   ?? new();
-                    
+                    Log.Print($"[Settings] Actions loaded: {actions.Count} verbs found");
+                    Log.Print($"[Settings] Action keys: {string.Join(", ", actions.Keys)}");
+
                     foreach (var (actionName, nounsObj) in actions)
                     {
                         var nouns = nounsObj as Dictionary<string, object> ?? new();
                         _actions[actionName] = CreateNouns(nouns);
+                        Log.Print($"[Settings] Processed verb '{actionName}' with {_actions[actionName].Count} nouns");
                     }
-                    
+
                     _verbs = (GetValue(_settings, "actions") as Dictionary<string, object>)?.Keys.ToList() ?? [];
-                    
-                    var restrictBy = GetValue(_settings, "restrict_by") as Dictionary<string, object> 
+                    Log.Print($"[Settings] Total verbs: {_verbs.Count} - {string.Join(", ", _verbs)}");
+
+                    var restrictBy = GetValue(_settings, "restrict_by") as Dictionary<string, object>
                                      ?? new();
 
                     _restrict = CreateRestrictions(restrictBy);
-                    
+
                     SubstituteVars();
+                    Log.Print("[Settings] Settings loaded successfully.");
+                }
+                else
+                {
+                    Log.Print("[Settings] ERROR: Settings deserialization returned null");
                 }
             }
             catch (Exception e)
             {
+                Log.Print("[Settings] ERROR during load:");
                 Log.Print(e);
                 throw;
             }
         }
         else
         {
-            throw new Exception("Error reading JSON file.");
+            throw new Exception("Error reading YAML file.");
         }
     }
 
@@ -147,9 +221,9 @@ public class Settings
                 var actionNoun = new ActionNoun(
                     (actionName as string)!,
                     actionDescription as string,
-                    actionConfirm as bool? ?? false,
-                    actionRestrict as bool? ?? false,
-                    actionDisabled as bool? ?? false,
+                    ParseBool(actionConfirm, false),
+                    ParseBool(actionRestrict, false),
+                    ParseBool(actionDisabled, false),
                     actionArgs as Dictionary<string, object>);
                 
                 actionNouns[nounName] = actionNoun;
@@ -219,13 +293,58 @@ public class Settings
 
     public void Save()
     {
-        SaveTextFile(JSON_FILE_PATH, JsonConvert.SerializeObject(_settings, Formatting.Indented));
+        var serializer = new SerializerBuilder().Build();
+        var yaml = serializer.Serialize(_settings);
+        SaveTextFile(YAML_FILE_PATH, yaml);
     }
 
     private object? GetValue(Dictionary<string, object>? dic, string key)
     {
         if (dic == null || !dic.ContainsKey(key)) return null;
-        
+
         return dic[key];
+    }
+
+    private bool GetBoolValue(Dictionary<string, object>? dic, string key, bool defaultValue)
+    {
+        var value = GetValue(dic, key);
+        return ParseBool(value, defaultValue);
+    }
+
+    private bool ParseBool(object? value, bool defaultValue)
+    {
+        if (value == null) return defaultValue;
+
+        // Handle if it's already a boolean
+        if (value is bool boolValue)
+            return boolValue;
+
+        // Handle if it's a string representation of boolean
+        if (value is string strValue && bool.TryParse(strValue, out bool parsedBool))
+            return parsedBool;
+
+        return defaultValue;
+    }
+
+    private double? GetDoubleValue(Dictionary<string, object>? dic, string key)
+    {
+        var value = GetValue(dic, key);
+        if (value == null) return null;
+
+        // Handle if it's already a double or numeric type
+        if (value is double doubleValue)
+            return doubleValue;
+
+        if (value is int intValue)
+            return intValue;
+
+        if (value is float floatValue)
+            return floatValue;
+
+        // Handle if it's a string representation of a number
+        if (value is string strValue && double.TryParse(strValue, out double parsedDouble))
+            return parsedDouble;
+
+        return null;
     }
 }

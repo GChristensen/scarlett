@@ -22,14 +22,13 @@
       <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
       <PackageReference Include="System.IO.Ports" Version="8.0.0" />
       <PackageReference Include="System.Speech" Version="8.0.0" />
+      <PackageReference Include="YamlDotNet" Version="16.3.0" />
+      <!--PackageReference Include="NAudio" Version="2.2.1" /-->
+      <!--PackageReference Include="Vosk" Version="0.3.38" /-->
     </ItemGroup>
 
     <ItemGroup>
-      <None Remove="settings.json" />
-      <AdditionalFiles Include="settings.json">
-        <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-      </AdditionalFiles>
-      <None Remove="settings.yml" />
+      <None Remove="settings.yaml" />
     </ItemGroup>
 
 </Project>

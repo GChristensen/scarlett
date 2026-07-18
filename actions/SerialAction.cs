@@ -19,8 +19,8 @@ file class Args
         args.TryGetValue("send", out object? sendObj);
 
         Port = portNameObj as string;
-        Baud = (int?)(long?)baudObj;
-        DTR = (bool?)dtrObj;
+        Baud = ArgHelper.ToInt(baudObj);
+        DTR = ArgHelper.ToBool(dtrObj);
         Presend = presendObj as string;
         Send = sendObj as string;
     }

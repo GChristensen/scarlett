@@ -1,0 +1,82 @@
+﻿assistant:
+  name: scarlett  # only recognize commands preceded with this word if enabled
+  enable_name: false  # enable use of the assistant name
+  min_confidence: 0.6  # only execute commands with the recognition confidence above this level (0-1)
+  display_errors: true  # display errors in message boxes, write to the log otherwise
+  engine: WSR  # recognition engine to use (WSR = Windows Speech Recognition, VOSK = Vosk offline recognition)
+  # vosk_model_path: models/vosk-model-en-us-0.22  # path to Vosk model directory (required when engine is VOSK)
+
+vars:  # specify "'@@var_name'" in the args to use its value
+  chrome: C:\Program Files\Google\Chrome\Application\chrome.exe
+  pythonw: D:\software\dev\python\pythonw.exe
+  tv_host: 192.168.1.100
+  controller_port: COM3
+
+actions:
+  light:
+    screen:
+      action: serial
+      args:
+        port: '@@controller_port'
+        baud: 9600
+        dtr: false
+        presend: _
+        send: A
+  
+  show:
+    box:
+      action: sony-ircc
+      args:
+        host: '@@tv_host'
+        cmd: AAAAAgAAABoAAABbAw==
+    rtx:
+      action: sony-ircc
+      args:
+        host: '@@tv_host'
+        cmd: AAAAAgAAABoAAABcAw==
+  
+  hide:
+    screen:
+      action: serial
+      args:
+        port: '@@controller_port'
+        baud: 9600
+        dtr: false
+        presend: _
+        send: A
+  
+  open:
+    youtube:
+      action: run
+      description: Open YouTube in Chrome
+      args:
+        cmd: '@@chrome'
+        args:
+          - https://youtube.com
+        maximize: true
+ 
+  do:
+    escape:
+      action: simulate-input
+      args:
+        keys: "{ESC}"
+        repeat: 2
+        repeat_delay: 1500
+  
+  terminate:
+    it:
+      action: close-window
+      confirm: true  # the command will open the voice confirmation dialog
+      args:
+        type: foreground
+  
+  start:
+    rtx:
+      action: wol
+      confirm: true
+      args:
+        mac: <my mac>
+
+restrict_by:
+  processes:  # a restricted command would not execute if one of the processes below is running
+    - C:/Program Files (x86)/K-Lite Codec Pack/MPC-HC64/mpc-hc64.exe

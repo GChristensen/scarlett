@@ -2,6 +2,7 @@
 using System.IO;
 using System.Runtime.InteropServices;
 using System.Windows.Threading;
+using Application = System.Windows.Application;
 
 namespace Scarlett;
 
@@ -64,5 +65,26 @@ public class Utils
         }
 
         return false;
+    }
+    
+    // Helper method to show Windows notifications
+    public static void ShowNotification(string title, string message)
+    {
+        Application.Current.Dispatcher.BeginInvoke(() => {
+            var notification = new System.Windows.Forms.NotifyIcon
+            {
+                Visible = true,
+                Icon = System.Drawing.SystemIcons.Information,
+                BalloonTipTitle = title,
+                BalloonTipText = message
+            };
+            
+            notification.ShowBalloonTip(3000);
+            
+            // Dispose the notification after showing
+            Task.Delay(3000).ContinueWith(_ => {
+                notification.Dispose();
+            });
+        });
     }
 }

@@ -13,8 +13,8 @@ file class Args
         args.TryGetValue("repeat_delay", out object? repeatDelayObj);
 
         Keys = keysObj as string;
-        Repeat = (int?)(long?)repeatObj;
-        RepeatDelay = (int?)(long?)repeatDelayObj;
+        Repeat = ArgHelper.ToInt(repeatObj);
+        RepeatDelay = ArgHelper.ToInt(repeatDelayObj);
     }
 }
 

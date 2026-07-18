@@ -18,8 +18,8 @@ file class Args
         args.TryGetValue("maximize_delay", out object? maximizeDelayObj);
 
         Command = cmdObj as string;
-        Maximize = maximizeObj as bool?;
-        MaximizeDelay = (int?)(long?)maximizeDelayObj;
+        Maximize = ArgHelper.ToBool(maximizeObj);
+        MaximizeDelay = ArgHelper.ToInt(maximizeDelayObj);
 
         if (argsObj is List<object> arguments)
         {

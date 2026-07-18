@@ -15,8 +15,8 @@ file class Args
         args.TryGetValue("maximize_delay", out object? maximizeDelayObj);
 
         URL = urlObj as string;
-        Maximize = maximizeObj as bool?;
-        MaximizeDelay = (int?)(long?)maximizeDelayObj;
+        Maximize = ArgHelper.ToBool(maximizeObj);
+        MaximizeDelay = ArgHelper.ToInt(maximizeDelayObj);
     }
 }
 
