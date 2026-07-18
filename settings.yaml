@@ -75,7 +75,7 @@ actions:
       action: wol
       confirm: true
       args:
-        mac: <my mac>
+        mac: '<my mac>'
 
 restrict_by:
   processes:  # a restricted command would not execute if one of the processes below is running

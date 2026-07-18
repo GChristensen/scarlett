@@ -1,0 +1,433 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+using System.Windows.Threading;
+using NAudio.Wave;
+using Newtonsoft.Json.Linq;
+using Vosk;
+
+namespace Scarlett.engines;
+
+public class VoskRecognizer : RecognizerEngine
+{
+    private Vosk.VoskRecognizer? _voskRecognizer;
+    private Model? _model;
+    private WaveInEvent? _waveIn;
+    private bool _isListening = false;
+    private readonly object _lock = new object();
+
+    // Grammar constraints: store valid verb+noun combinations
+    private HashSet<string> _validPhrases = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+    private HashSet<string> _pauseCommands = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+    private HashSet<string> _resumeCommands = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+    public override bool IsListening
+    {
+        get
+        {
+            lock (_lock)
+            {
+                return _isListening;
+            }
+        }
+    }
+
+    public VoskRecognizer(Settings settings, Dispatcher dispatcher) : base(settings, dispatcher)
+    {
+        Log.Print("[Vosk] VoskRecognizer constructor completed");
+    }
+
+    protected override void HandleStart()
+    {
+        lock (_lock)
+        {
+            if (_isListening)
+            {
+                Log.Print("[Vosk] Already listening, ignoring start request");
+                return;
+            }
+
+            try
+            {
+                Log.Print("[Vosk] Starting Vosk recognition...");
+
+                // Initialize model if needed
+                if (_model == null)
+                {
+                    InitializeModel();
+                }
+
+                // Build grammar constraints
+                BuildGrammar();
+
+                // Start audio capture
+                StartAudioCapture();
+
+                _isListening = true;
+                IsShutDown = false;
+                Log.Print("[Vosk] Recognition started successfully");
+            }
+            catch (Exception ex)
+            {
+                Log.Error($"[Vosk] Failed to start recognition: {ex.Message}");
+                _isListening = false;
+            }
+        }
+    }
+
+    protected override void HandleStop()
+    {
+        lock (_lock)
+        {
+            if (!_isListening)
+            {
+                Log.Print("[Vosk] Not listening, ignoring stop request");
+                return;
+            }
+
+            try
+            {
+                Log.Print("[Vosk] Stopping Vosk recognition...");
+                StopAudioCapture();
+                _isListening = false;
+                IsShutDown = true;
+                Log.Print("[Vosk] Recognition stopped");
+            }
+            catch (Exception ex)
+            {
+                Log.Error($"[Vosk] Error stopping recognition: {ex.Message}");
+            }
+        }
+    }
+
+    protected override void HandleShutdown()
+    {
+        lock (_lock)
+        {
+            Log.Print("[Vosk] Shutting down Vosk recognizer...");
+
+            try
+            {
+                StopAudioCapture();
+                CleanupEngine();
+                IsShutDown = true;
+                Log.Print("[Vosk] Shutdown complete");
+            }
+            catch (Exception ex)
+            {
+                Log.Error($"[Vosk] Error during shutdown: {ex.Message}");
+            }
+        }
+    }
+
+    protected override void CleanupEngine()
+    {
+        _voskRecognizer?.Dispose();
+        _voskRecognizer = null;
+
+        _model?.Dispose();
+        _model = null;
+
+        _validPhrases.Clear();
+        _pauseCommands.Clear();
+        _resumeCommands.Clear();
+
+        Log.Print("[Vosk] Engine resources cleaned up");
+    }
+
+    private void InitializeModel()
+    {
+        string modelPath = _settings.VoskModelPath;
+
+        if (string.IsNullOrEmpty(modelPath))
+        {
+            throw new InvalidOperationException("Vosk model path is not configured in settings.yaml");
+        }
+
+        if (!System.IO.Directory.Exists(modelPath))
+        {
+            throw new System.IO.DirectoryNotFoundException($"Vosk model directory not found: {modelPath}");
+        }
+
+        Log.Print($"[Vosk] Loading model from: {modelPath}");
+        _model = new Model(modelPath);
+        Log.Print("[Vosk] Model loaded successfully");
+    }
+
+    private void BuildGrammar()
+    {
+        _validPhrases.Clear();
+        _pauseCommands.Clear();
+        _resumeCommands.Clear();
+
+        // Build valid verb+noun combinations from settings
+        foreach (var verb in _settings.Verbs)
+        {
+            var actionVerb = verb;
+
+            // Add assistant name prefix if enabled
+            if (_settings is { AssistantName: not null, EnableAssistantName: true })
+            {
+                actionVerb = _settings.AssistantName + " " + verb;
+            }
+
+            var nouns = _settings.NounsOf[verb];
+            foreach (var noun in nouns)
+            {
+                string phrase = $"{actionVerb} {noun.Key}".ToLower();
+                _validPhrases.Add(phrase);
+                Log.Print($"[Vosk] Registered phrase: '{phrase}'");
+            }
+        }
+
+        // Build pause commands
+        var pauseCommandsList = new[] { Constants.Commands.StopListening, Constants.Commands.PauseListening };
+        foreach (var cmd in pauseCommandsList)
+        {
+            string command = cmd;
+            if (_settings is { AssistantName: not null, EnableAssistantName: true })
+            {
+                command = _settings.AssistantName.ToLower() + " " + cmd;
+            }
+            _pauseCommands.Add(command);
+            Log.Print($"[Vosk] Registered pause command: '{command}'");
+        }
+
+        // Build resume commands
+        var resumeCommandsList = new[] { Constants.Commands.ResumeListening, Constants.Commands.StartListening };
+        foreach (var cmd in resumeCommandsList)
+        {
+            string command = cmd;
+            if (_settings is { AssistantName: not null, EnableAssistantName: true })
+            {
+                command = _settings.AssistantName.ToLower() + " " + cmd;
+            }
+            _resumeCommands.Add(command);
+            Log.Print($"[Vosk] Registered resume command: '{command}'");
+        }
+
+        // Create grammar string for Vosk (JSON array format)
+        var allPhrases = new List<string>();
+        allPhrases.AddRange(_validPhrases);
+        allPhrases.AddRange(_pauseCommands);
+        allPhrases.AddRange(_resumeCommands);
+
+        // Create recognizer
+        _voskRecognizer = new Vosk.VoskRecognizer(_model, 16000.0f);
+
+        // Build JSON grammar for constrained recognition
+        var grammarJson = $"[\"{string.Join("\", \"", allPhrases)}\"]";
+
+        // Set grammar constraints (Vosk supports grammar in some versions)
+        // Note: If SetGrammar is not available in your Vosk version,
+        // recognition will work without grammar constraints and we'll filter results in post-processing
+        try
+        {
+            // Use reflection to check if SetGrammar exists and call it if available
+            var setGrammarMethod = _voskRecognizer.GetType().GetMethod("SetGrammar");
+            if (setGrammarMethod != null)
+            {
+                setGrammarMethod.Invoke(_voskRecognizer, new object[] { grammarJson });
+                Log.Print($"[Vosk] Grammar constraints applied with {_validPhrases.Count} action phrases, {_pauseCommands.Count} pause commands, {_resumeCommands.Count} resume commands");
+            }
+            else
+            {
+                Log.Print($"[Vosk] SetGrammar not available - using post-processing filter for {_validPhrases.Count} action phrases");
+            }
+        }
+        catch (Exception ex)
+        {
+            Log.Print($"[Vosk] Could not set grammar: {ex.Message}. Will use post-processing filter.");
+        }
+    }
+
+    private void StartAudioCapture()
+    {
+        if (_waveIn != null)
+        {
+            Log.Print("[Vosk] Audio capture already running");
+            return;
+        }
+
+        _waveIn = new WaveInEvent
+        {
+            WaveFormat = new WaveFormat(16000, 1) // 16kHz, mono
+        };
+
+        _waveIn.DataAvailable += OnAudioDataAvailable;
+        _waveIn.RecordingStopped += OnRecordingStopped;
+
+        _waveIn.StartRecording();
+        Log.Print("[Vosk] Audio capture started (16kHz, mono)");
+    }
+
+    private void StopAudioCapture()
+    {
+        if (_waveIn != null)
+        {
+            _waveIn.StopRecording();
+            _waveIn.DataAvailable -= OnAudioDataAvailable;
+            _waveIn.RecordingStopped -= OnRecordingStopped;
+            _waveIn.Dispose();
+            _waveIn = null;
+            Log.Print("[Vosk] Audio capture stopped");
+        }
+    }
+
+    private void OnAudioDataAvailable(object? sender, WaveInEventArgs e)
+    {
+        if (_voskRecognizer == null || !_isListening)
+            return;
+
+        try
+        {
+            // Feed audio data to Vosk
+            if (_voskRecognizer.AcceptWaveform(e.Buffer, e.BytesRecorded))
+            {
+                // Final result available
+                var result = _voskRecognizer.Result();
+                ProcessRecognitionResult(result);
+            }
+            else
+            {
+                // Partial result (optional: could log for debugging)
+                // var partial = _voskRecognizer.PartialResult();
+            }
+        }
+        catch (Exception ex)
+        {
+            Log.Error($"[Vosk] Error processing audio data: {ex.Message}");
+        }
+    }
+
+    private void OnRecordingStopped(object? sender, StoppedEventArgs e)
+    {
+        if (e.Exception != null)
+        {
+            Log.Error($"[Vosk] Recording stopped with error: {e.Exception.Message}");
+        }
+        else
+        {
+            Log.Print("[Vosk] Recording stopped");
+        }
+    }
+
+    private void ProcessRecognitionResult(string jsonResult)
+    {
+        try
+        {
+            var result = JObject.Parse(jsonResult);
+            var text = result["text"]?.ToString();
+
+            if (string.IsNullOrWhiteSpace(text))
+                return;
+
+            text = text.ToLower().Trim();
+
+            // Get confidence if available (Vosk doesn't always provide it in the same format as WSR)
+            // For grammar-constrained recognition, matched phrases have high implicit confidence
+            double confidence = 1.0; // Assume high confidence for grammar matches
+
+            Log.Print($"[Vosk] Recognized: '{text}' (confidence: {confidence:F2})");
+
+            // Ensure we're on the UI thread
+            if (!_dispatcher.CheckAccess())
+            {
+                _dispatcher.BeginInvoke(() => HandleRecognizedText(text, confidence));
+                return;
+            }
+
+            HandleRecognizedText(text, confidence);
+        }
+        catch (Exception ex)
+        {
+            Log.Error($"[Vosk] Error parsing recognition result: {ex.Message}");
+        }
+    }
+
+    private void HandleRecognizedText(string text, double confidence)
+    {
+        // Check for pause commands
+        if (_pauseCommands.Contains(text))
+        {
+            Log.Print($"[Vosk] Pause command detected: '{text}'");
+            if (_settings.MinConfidence == null || confidence >= _settings.MinConfidence)
+            {
+                IsPaused = true;
+                Log.Print("[Vosk] Recognition paused via voice command");
+            }
+            else
+            {
+                Log.Print("[Vosk] Pause command ignored due to low confidence");
+            }
+            return;
+        }
+
+        // Check for resume commands
+        if (_resumeCommands.Contains(text))
+        {
+            Log.Print($"[Vosk] Resume command detected: '{text}'");
+            if (_settings.MinConfidence == null || confidence >= _settings.MinConfidence)
+            {
+                if (IsPaused)
+                {
+                    IsPaused = false;
+                    Log.Print("[Vosk] Recognition resumed via voice command");
+                }
+            }
+            else
+            {
+                Log.Print("[Vosk] Resume command ignored due to low confidence");
+            }
+            return;
+        }
+
+        // Ignore if paused
+        if (IsPaused)
+        {
+            Log.Print("[Vosk] Recognition paused, ignoring command");
+            return;
+        }
+
+        // Check if the phrase is in our valid grammar
+        if (!_validPhrases.Contains(text))
+        {
+            Log.Print($"[Vosk] Unrecognized phrase (not in grammar): '{text}'");
+            return;
+        }
+
+        // Extract verb and noun from recognized text
+        var words = text.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+
+        // Account for assistant name prefix
+        int shiftIndex = 0;
+        if (_settings is { AssistantName: not null, EnableAssistantName: true })
+        {
+            shiftIndex = _settings.AssistantName.Split(' ').Length;
+        }
+
+        if (words.Length >= shiftIndex + 2)
+        {
+            string recognizedVerb = words[shiftIndex];
+            string recognizedNoun = words[shiftIndex + 1];
+
+            // Check confidence threshold
+            if (_settings.MinConfidence != null && confidence < _settings.MinConfidence)
+            {
+                Log.Print($"[Vosk] Confidence {confidence:F2} below threshold {_settings.MinConfidence:F2}, ignoring");
+                return;
+            }
+
+            Log.Print($"[Vosk] Executing action: verb='{recognizedVerb}', noun='{recognizedNoun}'");
+
+            // Execute action via ActionManager
+            _actionManager.TryExecute(recognizedVerb, recognizedNoun);
+        }
+        else
+        {
+            Log.Print($"[Vosk] Could not parse verb/noun from: '{text}'");
+        }
+    }
+}
