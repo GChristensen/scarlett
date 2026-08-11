@@ -9,9 +9,6 @@ The actions include execution of external programs, HTTP requests, Wake on LAN, 
 Users can create their own actions either by writing them in C# as a part of the
 application or by executing as external scripts.
 
-This functionality could be also found in the [Enso](https://github.com/GChristensen/enso-portable) voicecmd module, so you may prefer it
-if you are using Enso.
-
 <hr>
 
 Because Windows speech recognition works surprisingly well with inexpensive microphone
@@ -40,21 +37,28 @@ Currently, Scarlett supports the following set of actions:
 ### Recognized Phrases
 
 Phrases that Scarlett could recognize and their corresponding actions are specified 
-in a hierarchical YAML config. For example, the following config defines 
+in a hierarchical JSON config. For example, the following config defines 
 two actions: "open browser" and "open slideshow".
 
-```yaml
-actions:
-  open:
-    browser:
-       action: run
-       ...
-    slideshow:
-       action: shell-open
-...
+```json
+{
+  "actions": {
+    "open": {
+      "browser": {
+        "action": "run",
+        ...
+      },
+      "slideshow": {
+        "action": "shell-open",
+        ...
+      }
+    }
+  }
+}
+
 ```
 
-For more details please see the [sample config](https://github.com/GChristensen/scarlett/blob/main/settings.yaml) 
+For more details please see the [sample config](https://github.com/GChristensen/scarlett/blob/main/settings.json) 
 which should be self-explanatory.
 
 ### Creating Your Own Actions

@@ -1,0 +1,49 @@
+---
+layout: default
+---
+<!DOCTYPE html>
+<html>
+<head>
+
+</head>
+<body>
+    <h1 id="scarlett">Scarlett</h1>
+
+    <p style="text-align: justify;">Scarlett is a hackable voice assistant for Windows that allows you to perform
+        various actions on recognized phrases with the grammar "[assistant] verb noun", e.g. "wake computer".
+        The set of phrases and the corresponding actions is specified in a hierarchical config. The actions
+        include execution of external programs, HTTP requests, Wake on LAN, and more. Users can create their
+        own actions either by writing them in C# as a part of the application or by executing external scripts.
+    </p>
+
+    <p style="text-align: justify;">
+        Because Windows speech recognition works surprisingly well with inexpensive microphone arrays such as
+        the PS3 Eye and has a very handy API, it is tempting to use it in a voice assistant that can do things
+        many smarter off-the-shelf assistants cannot. With Scarlett you can control devices of your own make,
+        simulate user input, and send HTTP requests. Although it currently only listens and does not talk back,
+        Scarlett is yet another ubiquitous command interface, such as
+        <a href="https://gchristensen.github.io/enso-portable/" target="_blank">Enso</a> or
+        <a href="https://gchristensen.github.io/ishell/" target="_blank">Ubiquity</a>.
+    </p>
+
+    <h4>Actions</h4>
+
+    <p style="text-align: justify;">Scarlett currently supports the following set of actions:</p>
+    <ul>
+        <li><b>run</b> - runs the specified program with the given arguments.</li>
+        <li><b>shell-open</b> - opens the specified file in the associated program.</li>
+        <li><b>url</b> - opens the specified URL in the default browser.</li>
+        <li><b>wol</b> - sends magic packets to wake up a network host.</li>
+        <li><b>http</b> - performs a HTTP request.</li>
+        <li><b>sony-ircc</b> - sends a HTTP IRCC command to an IP-controlled Sony TV.</li>
+        <li><b>serial</b> - sends a serial command to a connected device, e.g. Arduino.</li>
+        <li><b>simulate-input</b> - simulates user input with SendKeys.SendWait.</li>
+        <li><b>close-window</b> - closes the currently active window.</li>
+    </ul>
+
+    <p style="text-align: justify;">
+        See the <a href="https://github.com/GChristensen/scarlett#readme" target="_blank">project README</a>
+        for a sample configuration and instructions on creating your own actions.
+    </p>
+</body>
+</html>

@@ -3,4 +3,5 @@
 /bin/
 /obj/
 *.user
-/.claude/
+/settings.yaml.bak
+/.claude/settings.local.json

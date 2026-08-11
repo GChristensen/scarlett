@@ -1,0 +1,92 @@
+{
+  "assistant": {
+    "name": "scarlett", // only recognize commands preceded with this word if enabled
+    "enable_name": true, // enable use of the assistant name
+    "min_confidence": 0.6, // only execute commands with the recognition confidence above this level (0-1)
+    "display_errors": false // display errors in message boxes, only write to the log otherwise
+  }, 
+  "vars": { // specify "@@var_name" in the action args to use its value
+    "chrome": "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe",
+    "pythonw": "C:\\Program Files\\\\python\\pythonw.exe",
+    "tv_host": "192.168.1.120",
+    "controller_port": "COM3" 
+  },
+  "actions": {
+    "show": {
+      "screen": {
+        "action": "serial",
+        "description": "Turn on the TV by sending a command to the IR-enabled microcontroller sleeping on the serial interrupt",
+        "args": {"port": "@@controller_port", "baud": 9600, "dtr": false, "presend": "_", "send": "A"}
+      },
+      "box": {
+        "action": "sony-ircc",
+        "description": "Activate the HDMI2 input of the TV",
+        "args": {"host": "@@tv_host", "cmd": "AAAAAgAAABoAAABbAw=="}
+      },
+      "game": {
+        "action": "sony-ircc",
+        "description": "Activate the HDMI3 input of the TV",
+        "args": {"host": "@@tv_host", "cmd": "AAAAAgAAABoAAABcAw=="}
+      }
+    },
+    "open": {
+      "youtube": {
+        "action": "run",
+        "description": "Open YouTube in Chrome",
+        "args": {"cmd": "@@chrome", "args": ["https://youtube.com"], "maximize": true}
+      },
+      "slideshow": {
+        "action": "shell-open",
+        "description": "Open Slideshow in an image viewer which should be launched in the fullscreen by default",
+        "args": {"file": "D:\\media\\images\\fav\\nature\\_001.jpg", "menu": 6, "menu_delay": 6000}
+      }
+    },
+    "do": {
+      "plugin": {
+        "action": "run",
+        "description": "Restart sound",
+        "args": {"cmd": "@@pythonw", "args": ["D:\\scripts\\restart-sound.py"]}
+      },
+      "stop": {
+        "action": "sony-ircc",
+        "description": "Turn off the TV",
+        "restricted": true, // the command is restricted by the restriction options below
+        "args": {"host": "@@tv_host", "cmd": "AAAAAQAAAAEAAAAvAw=="}
+      },
+      "escape": {
+        "action": "simulate-input",
+        "description": "Close the slideshow by pressing Esc twice",
+        "args": {"keys": "{ESC}", "repeat": 2, "repeat_delay": 1500}
+      }
+    },
+    "stop": {
+      "it": {
+        "action": "close-window",
+        "description": "Close the currently active window",
+        "confirm": true, // the command will open the confirmation dialog
+        "args": {"type": "foreground"}
+      }
+    },
+    "wake": {
+      "box": {
+        "action": "wol",
+        "description": "Wake a computer in the LAN",
+        "disabled": true, // this command is disabled
+        "args": {"mac": "01:23:45:67:89:AB"}
+      }
+    },
+    "update": {
+      "sensor": {
+        "action": "http-request",
+        "description": "Force the network-enabled sensor to update readings",
+        "args": {"url":  "http://box/sensor1", "method": "post", 
+                 "headers": {"content-type": "text/plain"}, "payload": "update"}
+      }
+    }
+  },
+  "restrict_by": {
+    "processes": [ // a restricted command would not execute if one of the processes below is running
+      "C:/Program Files (x86)/K-Lite Codec Pack/MPC-HC64/mpc-hc64.exe"
+    ]
+  }
+}
