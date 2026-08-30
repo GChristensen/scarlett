@@ -3,7 +3,7 @@
 ### TL;DR
 
 Scarlett is a [SAPI-based](https://learn.microsoft.com/en-us/previous-versions/windows/desktop/ms723627(v=vs.85))
-voice assistant for Windows that allows you to perform
+voice assistant for Windows that allows to perform
 various actions on recognized phrases with the grammar "[assistant name] verb noun", e.g. "wake computer".
 Because Windows speech recognition works surprisingly well with inexpensive microphone arrays such as
 the PS3 Eye and has a very handy API, it is tempting to use SAPI in a voice assistant that can do things
