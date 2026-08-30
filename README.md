@@ -2,23 +2,22 @@
 
 ### TL;DR
 
-Scarlett is a hackable voice assistant for Windows that allows to perform various 
-actions on recognized phrases with the grammar "[assistant] verb noun", e.g. "wake computer".
-The set of phrases and the corresponding actions is specified in the hierarchical config. 
-The actions include execution of external programs, HTTP requests, Wake on LAN, etc. 
-Users can create their own actions either by writing them in C# as a part of the
-application or by executing as external scripts.
+Scarlett is a [SAPI-based](https://learn.microsoft.com/en-us/previous-versions/windows/desktop/ms723627(v=vs.85))
+voice assistant for Windows that allows you to perform
+various actions on recognized phrases with the grammar "[assistant name] verb noun", e.g. "wake computer".
+Because Windows speech recognition works surprisingly well with inexpensive microphone arrays such as
+the PS3 Eye and has a very handy API, it is tempting to use SAPI in a voice assistant that can do things
+many smarter off-the-shelf assistants cannot. With Scarlett you can control devices of your own make through a serial port,
+run scripts, and send HTTP requests.
 
-<hr>
-
-Because Windows speech recognition works surprisingly well with inexpensive microphone
-arrays such as PS3 Eye and has very handy API, it is tempting to use it in a voice
-assistant that can do things which many smarter off-the-shelf assistants can not.
-For example, with Scarlett you can control devices of your own make, simulate user
-input and send HTTP requests. Although currently it only listens and does not talk
-back. Essentially, Scarlett is a yet another ubiquitous command interface such as 
-[Enso](https://gchristensen.github.io/enso-portable/) or 
+Although it currently only listens and does not talk back,
+Scarlett could be characterized as a yet another ubiquitous command interface, such as
+[Enso](https://gchristensen.github.io/enso-portable/) or
 [Ubiquity](https://gchristensen.github.io/ishell/).
+The assistant name, commands, and the corresponding actions are specified in a YAML config. The actions
+include execution of external programs, HTTP requests, Wake on LAN, and more. Users can create custom
+actions either by implementing them in C# as a part of the application or by executing external scripts.
+
 
 ### Scarlett Actions
 
