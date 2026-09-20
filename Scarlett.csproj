@@ -31,4 +31,8 @@
       <None Remove="settings.yaml" />
     </ItemGroup>
 
+    <ItemGroup>
+      <Folder Include="landing\" />
+    </ItemGroup>
+
 </Project>

@@ -1,0 +1,387 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Scarlett — a voice assistant with no interface</title>
+<meta name="description" content="Scarlett is a SAPI-based voice assistant for Windows. It listens for phrases of the form 'verb noun' and runs whatever action they are bound to in a YAML file.">
+<link rel="icon" type="image/svg+xml" href="img/logo.svg">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;500;700&amp;display=swap">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<!-- NAV -->
+<header class="site-header">
+  <a class="brand" href="#top" aria-label="Scarlett home">
+    <img src="img/logo.svg" width="32" height="32" alt="">
+    <span class="brand__name">Scarlett</span>
+  </a>
+  <nav class="site-nav">
+    <a href="#grammar">grammar</a>
+    <a href="#actions">actions</a>
+    <a href="#config">config</a>
+    <a href="#notes">notes</a>
+    <a href="https://github.com/GChristensen/scarlett">source</a>
+  </nav>
+</header>
+
+<main>
+
+<!-- HERO -->
+<section class="hero" id="top">
+  <p class="hero__prompt"><span>rec</span>listening only for two words</p>
+  <h1 class="hero__title">Say a verb.<br><em>Say a noun.</em><i class="pulse"></i></h1>
+
+  <p class="hero__lede">Scarlett is a
+      <a class="text-link" href="https://learn.microsoft.com/en-us/previous-versions/windows/desktop/ms723627(v=vs.85)">SAPI-based</a>
+      voice assistant for Windows. It listens for phrases with the grammar
+      <b>[name] verb noun</b> &mdash; e.g. &ldquo;wake computer&rdquo; &mdash; and runs whatever action
+      that phrase is bound to in a YAML configuration file. This is an experimental application that gave <a href="#"><u>Enso</u></a>
+    its speech recognition abilities.
+  </p>
+
+  <figure class="hero__figure">
+    <svg class="diagram" viewBox="0 0 1200 460" role="img"
+         aria-label="Signal chain: a spoken phrase enters a microphone array, is recognized by SAPI, is matched against the verb-noun grammar if the recognition confidence clears min_confidence, is dispatched to the action declared for it in settings.yaml unless restrict_by blocks it, and takes effect — here, a Wake-on-LAN packet.">
+      <defs>
+        <pattern id="grid" width="24" height="24" patternUnits="userSpaceOnUse">
+          <circle cx="1" cy="1" r="1" fill="#3A3D42"/>
+        </pattern>
+      </defs>
+
+      <rect width="1200" height="460" rx="10" fill="#232528"/>
+      <rect width="1200" height="460" rx="10" fill="url(#grid)" opacity=".5"/>
+
+      <!-- header line -->
+      <text class="d-label" x="40" y="46">signal chain</text>
+      <text class="d-faint" x="1160" y="46" text-anchor="end">no window · no reply</text>
+
+      <!-- what goes in, what comes out -->
+      <text class="d-phrase d-accent" x="40" y="106">«</text>
+      <text class="d-phrase" x="70" y="106">wake computer</text>
+
+      <!-- brackets -->
+      <path class="d-rule" d="M40 158 L40 150 L467 150 L467 158"/>
+      <text class="d-faint" x="253" y="138" text-anchor="middle">windows speech recognition</text>
+      <path class="d-rule" d="M502 352 L502 360 L929 360 L929 352"/>
+      <text class="d-faint" x="715" y="382" text-anchor="middle">declared in settings.yaml</text>
+
+      <!-- flow arrows -->
+      <g class="d-rule">
+        <path d="M242 255 H263"/><path d="M258 250 L264 255 L258 260" fill="none"/>
+        <path d="M473 255 H494"/><path d="M489 250 L495 255 L489 260" fill="none"/>
+        <path d="M704 255 H725"/><path d="M720 250 L726 255 L720 260" fill="none"/>
+        <path d="M935 255 H956"/><path d="M951 250 L957 255 L951 260" fill="none"/>
+      </g>
+
+      <!-- gates -->
+      <path class="d-gate" d="M484 188 V322"/>
+      <text class="d-gate-label" x="484" y="172" text-anchor="middle">min_confidence</text>
+      <path class="d-gate" d="M946 188 V322"/>
+
+      <!-- 01 input -->
+      <rect class="d-box" x="40" y="180" width="196" height="150" rx="8"/>
+      <text class="d-eyebrow" x="56" y="208"><tspan class="d-accent">01</tspan><tspan dx="9">input</tspan></text>
+      <g class="wave">
+        <rect class="wave__bar" x="87" y="243" width="6" height="26" rx="3"/>
+        <rect class="wave__bar" x="103" y="234" width="6" height="44" rx="3"/>
+        <rect class="wave__bar" x="119" y="224" width="6" height="64" rx="3"/>
+        <rect class="wave__bar" x="135" y="218" width="6" height="76" rx="3"/>
+        <rect class="wave__bar" x="151" y="228" width="6" height="56" rx="3"/>
+        <rect class="wave__bar" x="167" y="238" width="6" height="36" rx="3"/>
+        <rect class="wave__bar" x="183" y="246" width="6" height="20" rx="3"/>
+      </g>
+      <text class="d-foot" x="56" y="314">mic array</text>
+
+      <!-- 02 recognize -->
+      <rect class="d-box" x="271" y="180" width="196" height="150" rx="8"/>
+      <text class="d-eyebrow" x="287" y="208"><tspan class="d-accent">02</tspan><tspan dx="9">recognize</tspan></text>
+      <text class="d-big" x="369" y="254" text-anchor="middle">SAPI</text>
+      <rect x="295" y="272" width="148" height="6" rx="3" fill="#45484D"/>
+      <rect x="295" y="272" width="118" height="6" rx="3" fill="#FF6B4A"/>
+      <text class="d-foot" x="287" y="314">a confidence per phrase</text>
+      <text class="d-gate-label" x="946" y="172" text-anchor="middle">restrict_by</text>
+      
+      <!-- 03 match -->
+      <rect class="d-box" x="502" y="180" width="196" height="150" rx="8"/>
+      <text class="d-eyebrow" x="518" y="208"><tspan class="d-accent">03</tspan><tspan dx="9">match</tspan></text>
+      <rect x="520" y="234" width="70" height="30" rx="6" fill="#E8EAED"/>
+      <text class="d-verb" x="555" y="254" text-anchor="middle">wake</text>
+      <rect x="598" y="234" width="84" height="30" rx="6" fill="none" stroke="#8C929A" stroke-dasharray="4 4"/>
+      <text class="d-noun" x="640" y="254" text-anchor="middle">computer</text>
+      <text class="d-tiny" x="555" y="284" text-anchor="middle">verb</text>
+      <text class="d-tiny" x="640" y="284" text-anchor="middle">noun</text>
+      <text class="d-foot" x="518" y="314">a phrase from the config</text>
+
+      <!-- 04 dispatch -->
+      <rect class="d-box" x="733" y="180" width="196" height="150" rx="8"/>
+      <text class="d-eyebrow" x="749" y="208"><tspan class="d-accent">04</tspan><tspan dx="9">dispatch</tspan></text>
+      <text class="d-code" x="749" y="242">action: <tspan class="d-accent">wol</tspan></text>
+      <text class="d-code" x="749" y="262">args:</text>
+      <text class="d-code" x="767" y="282">mac: 04:7C:16…</text>
+      <text class="d-foot" x="749" y="314">one action, its args</text>
+
+      <!-- 05 effect -->
+      <rect class="d-box" x="964" y="180" width="196" height="150" rx="8"/>
+      <text class="d-eyebrow" x="980" y="208"><tspan class="d-accent">05</tspan><tspan dx="9">effect</tspan></text>
+      <g fill="none" stroke="#FF6B4A">
+        <circle cx="1062" cy="252" r="22" opacity=".35"/>
+        <circle cx="1062" cy="252" r="13" opacity=".65"/>
+      </g>
+      <circle cx="1062" cy="252" r="4.5" fill="#FF6B4A"/>
+      <text class="d-foot" x="980" y="314">the host wakes</text>
+
+      <text class="d-faint" x="40" y="428">the name in front — “scarlett” — is an optional first word, off by default</text>
+    </svg>
+
+    <figcaption class="diagram-captions">
+      <div class="diagram-caption">
+        <code><span>«</span> wake computer</code>
+        <p>Two words. The grammar holds only the phrases you wrote down, so there is little to mishear.</p>
+      </div>
+      <div class="diagram-caption">
+        <code><span>·</span> min_confidence: 0.6</code>
+        <p>A phrase the recognizer is less sure of than this is dropped, without any action.</p>
+      </div>
+      <div class="diagram-caption">
+        <code><span>·</span> action: wol</code>
+        <p>Each phrase is bound to one action and its arguments. Could be executed with a condition defined by restricted_by.</p>
+      </div>
+    </figcaption>
+  </figure>
+</section>
+
+<!-- WHAT IT IS -->
+<section class="section section--alt split">
+  <p class="eyebrow split__aside"><span class="eyebrow__num">01</span>what-it-is</p>
+  <div class="split__main">
+    <p class="statement">Windows speech recognition works surprisingly well with an inexpensive
+      microphone array.
+      <span>Scarlett is what happens when you point that recognizer at a YAML file instead of a
+      dictation box: control a serial port, a magic packet, an HTTP request, a script of your own.</span></p>
+    <p class="statement-note">Scarlett is a yet another ubiquitous command interface &mdash; one in the line of
+      <a class="text-link" href="https://gchristensen.github.io/enso-portable/">Enso</a> and
+      <a class="text-link" href="https://gchristensen.github.io/ishell/">Ubiquity</a>, but spoken
+      rather than typed.</p>
+  </div>
+</section>
+
+<!-- GRAMMAR -->
+<section class="section" id="grammar">
+  <div class="section-head">
+    <p class="eyebrow"><span class="eyebrow__num">02</span>grammar</p>
+    <h2 class="section-title">A phrase is a verb and a noun.</h2>
+    <p class="lede">The shape never varies: an optional assistant name, a verb, a noun. Both words
+      come from your config, which is the whole grammar the recognizer is given.</p>
+  </div>
+
+  <div class="panel panel--anatomy">
+    <div class="anatomy">
+      <span class="anatomy__mark"></span>
+      <span class="token token--name"><span class="token__word">scarlett</span><span class="token__label">name · optional</span></span>
+      <span class="token token--verb"><span class="token__word">wake</span><span class="token__label">verb</span></span>
+      <span class="token token--noun"><span class="token__word">computer</span><span class="token__label">noun</span></span>
+    </div>
+    <p class="anatomy__note">The name is off by default (<b>enable_name: false</b>). With it on,
+      nothing is recognized unless the phrase begins with it.</p>
+  </div>
+  
+</section>
+
+<!-- ACTIONS -->
+<section class="section section--alt" id="actions">
+  <div class="actions-head">
+    <div class="section-head">
+      <p class="eyebrow"><span class="eyebrow__num">03</span>actions</p>
+      <h2 class="section-title">Nine things a phrase can do.</h2>
+      <p class="lede">Every phrase names one action and hands it a few arguments.</p>
+    </div>
+    <a class="link-arrow" href="https://github.com/GChristensen/scarlett#scarlett-actions">readme →</a>
+  </div>
+
+  <div class="act-table">
+    <span class="mono-label act-table__label">action · arguments</span>
+
+    <div class="act-row">
+      <span class="act-row__name">run</span>
+      <code class="act-row__args">cmd <i>args</i> <i>maximize</i> <i>maximize_delay</i></code>
+      <span class="act-row__desc">Runs a program with the given arguments.</span>
+    </div>
+
+    <div class="act-row">
+      <span class="act-row__name">shell-open</span>
+      <code class="act-row__args">file <i>menu</i> <i>menu_delay</i></code>
+      <span class="act-row__desc">Opens a file in whatever program is associated with it.</span>
+    </div>
+
+    <div class="act-row">
+      <span class="act-row__name">url</span>
+      <code class="act-row__args">url <i>maximize</i> <i>maximize_delay</i></code>
+      <span class="act-row__desc">Opens a URL in the default browser.</span>
+    </div>
+
+    <div class="act-row">
+      <span class="act-row__name">wol</span>
+      <code class="act-row__args">mac</code>
+      <span class="act-row__desc">Sends magic packets to wake a host on the network.</span>
+    </div>
+
+    <div class="act-row">
+      <span class="act-row__name">http</span>
+      <code class="act-row__args">url <i>method</i> <i>headers</i> <i>payload</i></code>
+      <span class="act-row__desc">Performs an HTTP request.</span>
+    </div>
+
+    <div class="act-row">
+      <span class="act-row__name">sony-ircc</span>
+      <code class="act-row__args">host cmd</code>
+      <span class="act-row__desc">Sends an IRCC command to an IP-controlled Sony TV.</span>
+    </div>
+
+    <div class="act-row">
+      <span class="act-row__name">serial</span>
+      <code class="act-row__args">port baud <i>dtr</i> <i>presend</i> send</code>
+      <span class="act-row__desc">Writes to a device on a serial port &mdash; an Arduino of your own make, for instance.</span>
+    </div>
+
+    <div class="act-row">
+      <span class="act-row__name">simulate-input</span>
+      <code class="act-row__args">keys <i>repeat</i> <i>repeat_delay</i></code>
+      <span class="act-row__desc">Simulates keystrokes through SendKeys.SendWait.</span>
+    </div>
+
+    <div class="act-row">
+      <span class="act-row__name">close-window</span>
+      <code class="act-row__args">type</code>
+      <span class="act-row__desc">Closes the window in the foreground.</span>
+    </div>
+  </div>
+
+  <p class="actions-note">Anything else, you write it. Either as a script called through <b>run</b>, or
+    as a C# class copied from the
+    <a class="text-link" href="https://github.com/GChristensen/scarlett/blob/main/actions/user/TemplateAction.cs">action template</a>,
+    after which the application is rebuilt.</p>
+</section>
+
+<!-- CONFIG -->
+<section class="section config" id="config">
+  <div class="config__text">
+    <p class="eyebrow"><span class="eyebrow__num">04</span>config</p>
+    <h2 class="section-title">One file, read aloud.</h2>
+    <p>The phrases are a tree: the verb is a branch, the noun a leaf, and the leaf carries the action
+      and its arguments. Nothing else declares a command &mdash; what is in the file is what the
+      recognizer listens for.</p>
+    <p>Values repeated across commands go in <b>vars</b> and are spelled <b>'@@var_name'</b> where they
+      are used. A command marked <b>confirm: true</b> asks out loud before it fires;
+      <b>disabled: true</b> keeps a phrase in the file but out of the grammar. And
+      <b>restrict_by</b> holds back commands while a given process is running &mdash; a film playing,
+      say.</p>
+    <div class="config__links">
+      <a class="link-arrow" href="https://github.com/GChristensen/scarlett/blob/main/settings.yaml">settings.yaml →</a>
+      <a class="link-arrow" href="https://github.com/GChristensen/scarlett#recognized-phrases">how phrases are written →</a>
+    </div>
+  </div>
+
+  <div class="config__editor">
+    <div class="editor">
+      <div class="editor__bar">
+        <span class="editor__dot"></span><span class="editor__dot"></span><span class="editor__dot"></span>
+        <span class="editor__name">settings.yaml</span>
+      </div>
+<pre class="editor__code"><span class="c-key">assistant</span>:
+  <span class="c-key">name</span>: scarlett          <span class="c-comment"># the optional first word</span>
+  <span class="c-key">enable_name</span>: <span class="c-val">false</span>
+  <span class="c-key">min_confidence</span>: <span class="c-val">0.6</span>     <span class="c-comment"># drop anything less certain</span>
+
+<span class="c-key">vars</span>:                      <span class="c-comment"># '@@var_name' expands inside args</span>
+  <span class="c-key">tv_host</span>: <span class="c-str">192.168.1.20</span>
+
+<span class="c-key">actions</span>:
+  <span class="c-verb">wake</span>:                    <span class="c-comment"># verb</span>
+    <span class="c-noun">computer</span>:              <span class="c-comment"># noun</span>
+      <span class="c-key">action</span>: <span class="c-val">wol</span>
+      <span class="c-key">confirm</span>: <span class="c-val">true</span>        <span class="c-comment"># ask before firing</span>
+      <span class="c-key">args</span>:
+        <span class="c-key">mac</span>: <span class="c-str">04:7C:16:...</span>
+  <span class="c-verb">show</span>:
+    <span class="c-noun">box</span>:
+      <span class="c-key">action</span>: <span class="c-val">sony-ircc</span>
+      <span class="c-key">args</span>:
+        <span class="c-key">host</span>: <span class="c-str">'@@tv_host'</span>
+        <span class="c-key">cmd</span>: <span class="c-str">AAAAAgAAABoAAABbAw==</span>
+
+<span class="c-key">restrict_by</span>:
+  <span class="c-key">processes</span>:               <span class="c-comment"># not while this is running</span>
+    - <span class="c-str">…/mpc-hc64.exe</span></pre>
+    </div>
+  </div>
+</section>
+
+<!-- NOTES -->
+<section class="section section--alt notes" id="notes">
+  <div class="section-head notes__head">
+    <p class="eyebrow"><span class="eyebrow__num">05</span>notes</p>
+    <h2 class="section-title">An experiment, kept honest.</h2>
+    <p class="lede">Scarlett does one narrow thing with an API that has been sitting in Windows for
+      years. What follows is the case for it, and the list of what it will not do.</p>
+  </div>
+
+  <div class="notes__col">
+    <span class="mono-label">Why the recognizer already there</span>
+    <p>Windows speech recognition is accurate with cheap hardware &mdash; a PS3 Eye microphone array
+      does the job &mdash; and SAPI hands you a grammar object and a confidence score without
+      ceremony.</p>
+    <p>The grammar is small by construction: a handful of two-word phrases you wrote yourself. That
+      is a far easier problem than open dictation, and it is why a modest setup can be trusted to
+      pull a serial port line or wake a machine.</p>
+    <p>Nothing is uploaded online, nothing needs an account, and the assistant that off-the-shelf boxes
+      cannot be talked into doing &mdash; driving hardware of your own make &mdash; is the ordinary
+      case here.</p>
+  </div>
+
+  <div class="notes__col">
+    <span class="mono-label">What it is not</span>
+    <div class="nots">
+      <p class="not">It does not talk back. There is no speech synthesis at all.</p>
+      <p class="not">No wake-word model. The name is just an optional first word in the grammar.</p>
+      <p class="not">A phrase that is not in the config is discarded in silence.</p>
+      <p class="not">No interface but a tray icon that allows to pause and resume listening.</p>
+      <p class="not">Windows only. It is based on .NET Framework and Windows API.</p>
+    </div>
+  </div>
+</section>
+
+<!-- CLOSING -->
+<section class="closing">
+  <h2 class="closing__title">No window.<br><em>Just a grammar.</em></h2>
+  <div class="closing__links">
+    <a class="link-arrow" href="https://github.com/GChristensen/scarlett#readme">readme →</a>
+    <a class="link-arrow" href="https://github.com/GChristensen/scarlett/blob/main/settings.yaml">sample config →</a>
+    <a class="link-arrow" href="https://github.com/GChristensen/scarlett/blob/main/actions/user/TemplateAction.cs">action template →</a>
+  </div>
+  <p class="closing__note">MIT licensed, and openly experimental.</p>
+</section>
+
+</main>
+
+<!-- FOOTER -->
+<footer class="site-footer">
+  <a class="brand" href="#top" aria-label="Scarlett home">
+    <img src="img/logo.svg" width="28" height="28" alt="">
+    <span class="brand__name">Scarlett</span>
+  </a>
+  <nav>
+    <a href="https://github.com/GChristensen/scarlett#readme">Readme</a>
+    <a href="https://github.com/GChristensen/scarlett/blob/main/settings.yaml">Sample config</a>
+    <a href="https://github.com/GChristensen/scarlett">GitHub</a>
+    <a href="https://github.com/GChristensen/scarlett/issues">Report a bug</a>
+    <span>See also:
+      <a class="text-link" href="https://gchristensen.github.io/enso-portable/">Enso Launcher</a>,
+      <a class="text-link" href="https://gchristensen.github.io/ishell/">iShell</a></span>
+  </nav>
+  <span>© g/christensen</span>
+</footer>
+<script src="main.js"></script>
+</body>
+</html>

@@ -5,3 +5,4 @@
 *.user
 /.claude/settings.local.json
 /settings.yaml.bak
+/landing/node_modules/
